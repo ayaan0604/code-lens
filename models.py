@@ -32,15 +32,15 @@ class FunctionInfo:
     line_start : int 
     line_end : int 
     source : str
-    parent_class : Optional[str] 
-    return_annotation : Optional[str]
+    parent_class : Optional[str] = None
+    return_annotation : Optional[str] = None
     parameters : List[ParameterInfo] = field(default_factory=list)
     
 @dataclass
 class CallInfo:
     qualified_name : str 
     line_number : int 
-    containing_function : Optional[str]
+    containing_function : Optional[str] = None
 
 @dataclass
 class ClassInfo:
@@ -55,7 +55,9 @@ class ClassInfo:
 @dataclass
 class AnalyzedFile:
     metadata : Metadata
-    imports : List[ImportInfo]
-    classes : List[ClassInfo]
-    functions : List[FunctionInfo]
-    calls : List[CallInfo]
+    imports : List[ImportInfo] = field(default_factory=list)
+    classes : List[ClassInfo] = field(default_factory=list)
+    functions : List[FunctionInfo] = field(default_factory=list)
+    calls : List[CallInfo] = field(default_factory=list)
+
+    
