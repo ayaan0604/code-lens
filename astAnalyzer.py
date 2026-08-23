@@ -10,6 +10,7 @@ class PythonASTAnalyzer(ast.NodeVisitor):
         self.file_path = file_path
         self.tree = ast.parse(source)
         self.analyzedFile = AnalyzedFile(None)
+        self.scope = []
         
     #visitor functions
     def visit_Import(self, node):
@@ -32,7 +33,7 @@ class PythonASTAnalyzer(ast.NodeVisitor):
         module = node.module
         line = node.lineno
         for alias in node.names:
-            importedName = module + "." + alias.name
+            importedName = alias.name
             asName = alias.asname  
             self.analyzedFile.imports.append(
                 ImportInfo(
@@ -42,8 +43,52 @@ class PythonASTAnalyzer(ast.NodeVisitor):
                     line_number=line
                 )
             )
-                
 
+    def getParameters(self, args: ast.arguments)->List[ParameterInfo]:
+        parameters :List[ParameterInfo] = []
+        for arg in args.args:
+            pname = arg.arg
+            pann = None if arg.annotation is None else ast.unparse(arg.annotation) 
+            default = None
+            parameters.append(ParameterInfo(pname, default, pann))
+
+        idx = 1
+        for default in args.defaults:
+            parameters[-idx].default = ast.unparse(default) if default is not None else default
+            idx+=1
+
+        return parameters
+
+    def visit_FunctionDef(self, node):
+        name = node.name
+        lineStart = node.lineno
+        lineEnd = node.end_lineno
+        sourceCode = ast.get_source_segment(self.source, node)
+        
+        parameters = self.getParameters(node.args)
+
+        qualified_name = ".".join(self.scope + [name])
+
+        parent = self.scope[-1] if self.scope else None
+
+
+        returnaAnnotation = node.returns.id if node.returns else None
+
+        self.analyzedFile.functions.append(
+            FunctionInfo(
+                name,
+                qualified_name,
+                lineStart,
+                lineEnd,
+                sourceCode,
+                parent,
+                returnaAnnotation,
+                parameters
+            )
+        )
+
+        self.generic_visit(node)
+        
     #analyzer functions
     def get_metadata(self):
         path = self.file_path
@@ -68,8 +113,6 @@ class PythonASTAnalyzer(ast.NodeVisitor):
             code_lines=code_lines
         )
             
-    def getImports(self) -> List[ImportInfo]:
-        pass
 
     def analyze(self) -> AnalyzedFile:
 
@@ -86,8 +129,9 @@ from x import y as z
 
     #this is a comment
  
-def hello():
+def hello(name:Optional[str], x=10, y=20)->str:
     print("hello")
+    return name
 """
 analyzer = PythonASTAnalyzer(source, "temp.py")
 result = analyzer.analyze()
