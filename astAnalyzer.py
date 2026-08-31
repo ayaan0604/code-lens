@@ -1,7 +1,7 @@
 from models import *
 import ast
 from pprint import pp
-
+from typing import List, Union
 
 class PythonASTAnalyzer(ast.NodeVisitor):
     def __init__(self, source: str, file_path: str):
@@ -10,10 +10,14 @@ class PythonASTAnalyzer(ast.NodeVisitor):
         self.file_path = file_path
         self.tree = ast.parse(source)
         self.analyzedFile = None
-        self.classScope = []
-        self.functionScope = []
+        self.classScope : List[ClassInfo] = []
+        self.functionScope : List[FunctionInfo] = []
+        self.scope : List[Union[ClassInfo, FunctionInfo]]= []
+
 
     #helper functions
+    def get_current_scope_name(self)->str:
+        return ".".join([node.name for node in self.scope])
 
     def getParameters(self, args: ast.arguments)->List[ParameterInfo]:
             parameters :List[ParameterInfo] = []
@@ -38,7 +42,7 @@ class PythonASTAnalyzer(ast.NodeVisitor):
         
         parameters = self.getParameters(node.args)
 
-        qualified_name = ".".join(self.classScope + self.functionScope)
+        qualified_name = self.get_current_scope_name()
 
         parent = self.classScope[-1] if self.classScope else None
 
@@ -59,7 +63,7 @@ class PythonASTAnalyzer(ast.NodeVisitor):
     def getClassInfo(self, node:ast.ClassDef) -> ClassInfo:
         name = node.name
 
-        qualified_name = ".".join(self.classScope + [name])
+        qualified_name = self.get_current_scope_name()
 
         lineNumber = node.lineno
 
@@ -108,13 +112,14 @@ class PythonASTAnalyzer(ast.NodeVisitor):
         elif isinstance(node, ast.Attribute):
             return self.get_qualified_call_name(node.value) + "." + node.attr
 
+
     def get_call_info(self, node)-> CallInfo:
         qname = self.get_qualified_call_name(node)
         lineno = node.lineno
         containing_func = None
 
-        if self.functionScope or self.classScope:
-            containing_func = ".".join(self.classScope + self.functionScope)
+        if self.scope:
+            containing_func = self.get_current_scope_name()
 
         return CallInfo(
             qualified_name = qname,
@@ -159,32 +164,40 @@ class PythonASTAnalyzer(ast.NodeVisitor):
     
 
     def visit_FunctionDef(self, node):
-        self.functionScope.append(node.name)
-        info = self.getFunctionInfo(node)
+        
+        self.scope.append(node)
+
+        function_info = self.getFunctionInfo(node)
+
+        self.functionScope.append(function_info)
         
 
-        self.analyzedFile.functions.append(info)
+        self.analyzedFile.functions.append(function_info)
 
         if self.classScope:
             parent = self.classScope[-1]
-            for c in self.analyzedFile.classes:
-                if c.name == parent:
-                    c.methods.append(info)
+            parent.methods.append(function_info)
+        
 
         
 
         self.generic_visit(node)
 
         self.functionScope.pop()
+        self.scope.pop()
 
     def visit_ClassDef(self, node):
 
+        self.scope.append(node)
+
         info = self.getClassInfo(node)
+
+        self.classScope.append(info)
 
         self.analyzedFile.classes.append(info)
 
-        self.classScope.append(node.name)
         self.generic_visit(node)
+        self.scope.pop()
         self.classScope.pop()
 
     def visit_Call(self, node):
@@ -227,7 +240,9 @@ hello()
     result = analyzer.analyze()
     from dataclasses import asdict
     
-    pp(asdict(result))
+    pp(result)
+    import sys
+    print(sys.getsizeof(result))
 
 if __name__ == "__main__":
     main()
