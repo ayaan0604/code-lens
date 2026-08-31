@@ -9,10 +9,12 @@ class PythonASTAnalyzer(ast.NodeVisitor):
         self.source = source
         self.file_path = file_path
         self.tree = ast.parse(source)
-        self.analyzedFile = AnalyzedFile(None)
-        self.scope = []
+        self.analyzedFile = None
+        self.classScope = []
+        self.functionScope = []
 
     #helper functions
+
     def getParameters(self, args: ast.arguments)->List[ParameterInfo]:
             parameters :List[ParameterInfo] = []
             for arg in args.args:
@@ -28,7 +30,7 @@ class PythonASTAnalyzer(ast.NodeVisitor):
     
             return parameters
 
-    def getFunctionInfo(self, node):
+    def getFunctionInfo(self, node)-> FunctionInfo:
         name = node.name
         lineStart = node.lineno
         lineEnd = node.end_lineno
@@ -36,9 +38,9 @@ class PythonASTAnalyzer(ast.NodeVisitor):
         
         parameters = self.getParameters(node.args)
 
-        qualified_name = ".".join(self.scope + [name])
+        qualified_name = ".".join(self.classScope + self.functionScope)
 
-        parent = self.scope[-1] if self.scope else None
+        parent = self.classScope[-1] if self.classScope else None
 
         returnaAnnotation = ast.unparse(node.returns) if node.returns else None
 
@@ -54,10 +56,10 @@ class PythonASTAnalyzer(ast.NodeVisitor):
         )
 
 
-    def getClassInfo(self, node:ast.ClassDef):
+    def getClassInfo(self, node:ast.ClassDef) -> ClassInfo:
         name = node.name
 
-        qualified_name = ".".join(self.scope + [name])
+        qualified_name = ".".join(self.classScope + [name])
 
         lineNumber = node.lineno
 
@@ -73,7 +75,53 @@ class PythonASTAnalyzer(ast.NodeVisitor):
             methods= methods
         )
 
+    def get_metadata(self):
+        path = self.file_path
+        language = "python" #for now
 
+        lines = self.source.split("\n")
+
+        total_lines = len(lines)
+
+        code_lines = 0
+
+        for line in lines:
+            if line.strip().startswith("#") or not line.strip():
+                continue
+
+            code_lines+=1
+
+        return Metadata(
+            path=path,
+            language=language,
+            total_lines=total_lines,
+            code_lines=code_lines
+        )
+
+    def get_qualified_call_name(self, node):
+        if isinstance(node, ast.Call):
+                    return self.get_qualified_call_name(node.func)
+        
+        elif isinstance(node, ast.Name):
+            return node.id
+
+        elif isinstance(node, ast.Attribute):
+            return self.get_qualified_call_name(node.value) + "." + node.attr
+
+    def get_call_info(self, node)-> CallInfo:
+        qname = self.get_qualified_call_name(node)
+        lineno = node.lineno
+        containing_func = None
+
+        if self.functionScope or self.classScope:
+            containing_func = ".".join(self.classScope + self.functionScope)
+
+        return CallInfo(
+            qualified_name = qname,
+            line_number= lineno,
+            containing_function= containing_func
+        )
+        
     
     #visitor functions
 
@@ -111,18 +159,23 @@ class PythonASTAnalyzer(ast.NodeVisitor):
     
 
     def visit_FunctionDef(self, node):
+        self.functionScope.append(node.name)
         info = self.getFunctionInfo(node)
+        
 
         self.analyzedFile.functions.append(info)
 
-        if self.scope:
-            parent = self.scope[-1]
+        if self.classScope:
+            parent = self.classScope[-1]
             for c in self.analyzedFile.classes:
                 if c.name == parent:
                     c.methods.append(info)
 
+        
 
         self.generic_visit(node)
+
+        self.functionScope.pop()
 
     def visit_ClassDef(self, node):
 
@@ -130,47 +183,31 @@ class PythonASTAnalyzer(ast.NodeVisitor):
 
         self.analyzedFile.classes.append(info)
 
-        self.scope.append(node.name)
+        self.classScope.append(node.name)
         self.generic_visit(node)
-        self.scope.pop()
+        self.classScope.pop()
 
-    
+    def visit_Call(self, node):
+        info = self.get_call_info(node)
+        self.analyzedFile.calls.append(info)
+        self.generic_visit(node)
         
     #analyzer functions
-    def get_metadata(self):
-        path = self.file_path
-        language = "python" #for now
-
-        lines = self.source.split("\n")
-
-        total_lines = len(lines)
-
-        code_lines = 0
-
-        for line in lines:
-            if line.strip().startswith("#") or not line.strip():
-                continue
-
-            code_lines+=1
-
-        return Metadata(
-            path=path,
-            language=language,
-            total_lines=total_lines,
-            code_lines=code_lines
-        )
+    
             
 
     def analyze(self) -> AnalyzedFile:
 
-        self.analyzedFile.metadata = self.get_metadata()
+        self.analyzedFile = AnalyzedFile(metadata=self.get_metadata())
 
         self.visit(self.tree)
 
 
         return self.analyzedFile
 
-source = """
+def main():
+
+    source = """
 import os
 from x import y as z
 
@@ -180,10 +217,17 @@ class A(b,C.d):
         return true
 
 def hello(name:Optional[str], x=10, y=20)->str:
+    def bye():
+        return "bye"
     print("hello")
     return name
-"""
-analyzer = PythonASTAnalyzer(source, "temp.py")
-result = analyzer.analyze()
+hello()
+    """
+    analyzer = PythonASTAnalyzer(source, "temp.py")
+    result = analyzer.analyze()
+    from dataclasses import asdict
+    
+    pp(asdict(result))
 
-pp(result)
+if __name__ == "__main__":
+    main()
