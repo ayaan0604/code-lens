@@ -1,5 +1,2 @@
-authenticate(user)
-
-auth.authenticate(user)
-
-service.auth.authenticate(user)
+def hi(name:str) -> str:
+    return "hello" + name

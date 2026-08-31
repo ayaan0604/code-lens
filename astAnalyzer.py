@@ -10,14 +10,30 @@ class PythonASTAnalyzer(ast.NodeVisitor):
         self.file_path = file_path
         self.tree = ast.parse(source)
         self.analyzedFile = None
-        self.classScope : List[ClassInfo] = []
-        self.functionScope : List[FunctionInfo] = []
+        
         self.scope : List[Union[ClassInfo, FunctionInfo]]= []
 
 
     #helper functions
     def get_current_scope_name(self)->str:
         return ".".join([node.name for node in self.scope])
+
+    def get_current_class(self) -> ClassInfo | None:
+        for item in reversed(self.scope):
+            if isinstance(item, ClassInfo):
+                return item
+        else:
+            return None
+
+    def get_current_function(self)-> FunctionInfo | None:
+        for item in reversed(self.scope):
+            if isinstance(item, FunctionInfo):
+                return item
+        else:
+            return None
+        
+    def get_current_scope(self)-> ClassInfo | FunctionInfo | None:
+        return self.scope[-1] if self.scope else None
 
     def getParameters(self, args: ast.arguments)->List[ParameterInfo]:
             parameters :List[ParameterInfo] = []
@@ -28,7 +44,7 @@ class PythonASTAnalyzer(ast.NodeVisitor):
                 parameters.append(ParameterInfo(pname, default, pann))
     
             idx = 1
-            for default in args.defaults:
+            for default in reversed(args.defaults):
                 parameters[-idx].default = ast.unparse(default) if default is not None else default
                 idx+=1
     
@@ -42,9 +58,14 @@ class PythonASTAnalyzer(ast.NodeVisitor):
         
         parameters = self.getParameters(node.args)
 
-        qualified_name = self.get_current_scope_name()
+        current_scope_name = self.get_current_scope_name()
+        if not current_scope_name:
+            qualified_name = name
+        else:
+            qualified_name = ".".join([current_scope_name] + [name])
 
-        parent = self.classScope[-1] if self.classScope else None
+        parent = self.get_current_scope()
+        parent = parent.qualified_name if parent else None
 
         returnaAnnotation = ast.unparse(node.returns) if node.returns else None
 
@@ -63,7 +84,12 @@ class PythonASTAnalyzer(ast.NodeVisitor):
     def getClassInfo(self, node:ast.ClassDef) -> ClassInfo:
         name = node.name
 
-        qualified_name = self.get_current_scope_name()
+        current_scope_name = self.get_current_scope_name()
+        if not current_scope_name:
+            qualified_name = name
+        else:
+            qualified_name = ".".join([current_scope_name] + [name])
+
 
         lineNumber = node.lineno
 
@@ -114,17 +140,14 @@ class PythonASTAnalyzer(ast.NodeVisitor):
 
 
     def get_call_info(self, node)-> CallInfo:
-        qname = self.get_qualified_call_name(node)
+        qname = self.get_qualified_call_name(node) 
         lineno = node.lineno
-        containing_func = None
-
-        if self.scope:
-            containing_func = self.get_current_scope_name()
+        containing_func = self.get_current_scope_name()
 
         return CallInfo(
             qualified_name = qname,
             line_number= lineno,
-            containing_function= containing_func
+            containing_function= containing_func if containing_func else None
         )
         
     
@@ -165,40 +188,32 @@ class PythonASTAnalyzer(ast.NodeVisitor):
 
     def visit_FunctionDef(self, node):
         
-        self.scope.append(node)
-
         function_info = self.getFunctionInfo(node)
 
-        self.functionScope.append(function_info)
+        
         
 
         self.analyzedFile.functions.append(function_info)
 
-        if self.classScope:
-            parent = self.classScope[-1]
+        parent = self.get_current_scope()
+        if parent is not None and isinstance(parent, ClassInfo):
             parent.methods.append(function_info)
-        
 
-        
+        self.scope.append(function_info)
 
         self.generic_visit(node)
-
-        self.functionScope.pop()
         self.scope.pop()
 
     def visit_ClassDef(self, node):
 
-        self.scope.append(node)
-
         info = self.getClassInfo(node)
 
-        self.classScope.append(info)
 
         self.analyzedFile.classes.append(info)
 
+        self.scope.append(info)
         self.generic_visit(node)
         self.scope.pop()
-        self.classScope.pop()
 
     def visit_Call(self, node):
         info = self.get_call_info(node)
@@ -221,20 +236,20 @@ class PythonASTAnalyzer(ast.NodeVisitor):
 def main():
 
     source = """
-import os
-from x import y as z
+class A:
 
-    #this is a comment
-class A(b,C.d):
-    def login():
-        return true
+    def foo(self):
 
-def hello(name:Optional[str], x=10, y=20)->str:
-    def bye():
-        return "bye"
-    print("hello")
-    return name
-hello()
+        def inner():
+            authenticate()
+
+        inner()
+
+
+class B:
+
+    def foo(self):
+        something.run()
     """
     analyzer = PythonASTAnalyzer(source, "temp.py")
     result = analyzer.analyze()
