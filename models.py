@@ -1,8 +1,8 @@
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import List, Optional, Union
+from enum import Enum
 
-
-
+##Classes for File Info
 @dataclass
 class Metadata:
     path : str
@@ -17,6 +17,7 @@ class ImportInfo:
     imported_name : str 
     alias : str
     line_number : int
+    from_import : bool = False
 
 
 @dataclass
@@ -60,4 +61,16 @@ class AnalyzedFile:
     functions : List[FunctionInfo] = field(default_factory=list)
     calls : List[CallInfo] = field(default_factory=list)
 
-    
+#Class for dependency
+
+class DependencyType(Enum):
+    CALLS = "Calls"
+    IMPORTS = "Imports"
+    INHERITS = "Inherits"
+    INSTANTIATES = "Instantiates"
+@dataclass
+class Dependency:
+    source : Union[ClassInfo, FunctionInfo, Metadata]
+    target : Union[ClassInfo, FunctionInfo, Metadata]
+    type : DependencyType
+    line : Optional[int] 

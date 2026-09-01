@@ -180,7 +180,8 @@ class PythonASTAnalyzer(ast.NodeVisitor):
                     module= module,
                     imported_name= importedName,
                     alias = asName,
-                    line_number=line
+                    line_number=line,
+                    from_import=True
                 )
             )
 
@@ -236,6 +237,7 @@ class PythonASTAnalyzer(ast.NodeVisitor):
 def main():
 
     source = """
+from x import y
 class A:
 
     def foo(self):
@@ -250,6 +252,7 @@ class B:
 
     def foo(self):
         something.run()
+y.z()
     """
     analyzer = PythonASTAnalyzer(source, "temp.py")
     result = analyzer.analyze()
