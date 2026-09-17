@@ -74,3 +74,8 @@ class Dependency:
     target : Union[ClassInfo, FunctionInfo, Metadata]
     type : DependencyType
     line : Optional[int] 
+
+@dataclass
+class ExternalDependency:
+    module : str
+    name : Optional[str] = None
