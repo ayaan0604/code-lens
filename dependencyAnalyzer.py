@@ -238,9 +238,13 @@ def main():
     from astAnalyzer import PythonASTAnalyzer
     from pprint import pp
 
-    file1 = 'test.py'
+    file1 = 'auth.py'
     with open (file1) as f:
         source1 = f.read()
+
+    file2 = 'users.py'
+    with open (file2) as f:
+        source2 = f.read()
 
     
 
@@ -248,17 +252,25 @@ def main():
     pythonAnalyzer1 = PythonASTAnalyzer(source1, file1)
     result1 = pythonAnalyzer1.analyze()
 
-    dependencyAnalyzer = DependencyAnalyzer([result1])
+    pythonAnalyzer2 = PythonASTAnalyzer(source2, file2)
+    result2 = pythonAnalyzer2.analyze()
 
-    # pp(result1.calls)
-    dependencyAnalyzer.analyze()
-    pp(dependencyAnalyzer.entity_map)
+    dependencyAnalyzer1 = DependencyAnalyzer([result1, result2])
+    dependencyAnalyzer2 = DependencyAnalyzer([result1, result2])
+
+    
+    dependencyAnalyzer1.analyze()
+    dependencyAnalyzer2.analyze()
+
+    assert set(dependencyAnalyzer1.entity_map.keys()) == set(dependencyAnalyzer2.entity_map.keys())
+
+    pp(dependencyAnalyzer1.entity_map.keys())
     # pp(dependencyAnalyzer.dependencies)
 
-    print(dependencyAnalyzer.resolve_global_name("auth.authenticate", result1) )
-    print(dependencyAnalyzer.resolve_global_name("a.authenticate", result1) )
-    print(dependencyAnalyzer.resolve_global_name("authenticate", result1) )
-    print(dependencyAnalyzer.resolve_global_name("US", result1) )
+    # print(dependencyAnalyzer.resolve_global_name("auth.authenticate", result1) )
+    # print(dependencyAnalyzer.resolve_global_name("a.authenticate", result1) )
+    # print(dependencyAnalyzer.resolve_global_name("authenticate", result1) )
+    # print(dependencyAnalyzer.resolve_global_name("US", result1) )
 
 
 
@@ -407,4 +419,4 @@ def main_function():
 
 
 if __name__ == "__main__":
-    test()
+    main()
