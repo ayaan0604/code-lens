@@ -130,13 +130,13 @@ class PythonASTAnalyzer(ast.NodeVisitor):
 
     def get_qualified_call_name(self, node):
         if isinstance(node, ast.Call):
-                    return self.get_qualified_call_name(node.func)
+            node = node.func
         
-        elif isinstance(node, ast.Name):
-            return node.id
+        if isinstance(node, (ast.Name, ast.Attribute)):
+            return ast.unparse(node)
 
-        elif isinstance(node, ast.Attribute):
-            return self.get_qualified_call_name(node.value) + "." + node.attr
+        return None
+        
 
 
     def get_call_info(self, node)-> CallInfo:

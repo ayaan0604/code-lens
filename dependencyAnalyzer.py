@@ -238,13 +238,9 @@ def main():
     from astAnalyzer import PythonASTAnalyzer
     from pprint import pp
 
-    file1 = 'auth.py'
+    file1 = 'astAnalyzer.py'
     with open (file1) as f:
         source1 = f.read()
-
-    file2 = 'users.py'
-    with open (file2) as f:
-        source2 = f.read()
 
     
 
@@ -252,20 +248,13 @@ def main():
     pythonAnalyzer1 = PythonASTAnalyzer(source1, file1)
     result1 = pythonAnalyzer1.analyze()
 
-    pythonAnalyzer2 = PythonASTAnalyzer(source2, file2)
-    result2 = pythonAnalyzer2.analyze()
 
-    dependencyAnalyzer1 = DependencyAnalyzer([result1, result2])
-    dependencyAnalyzer2 = DependencyAnalyzer([result1, result2])
-
-    
+    dependencyAnalyzer1 = DependencyAnalyzer([result1])
     dependencyAnalyzer1.analyze()
-    dependencyAnalyzer2.analyze()
 
-    assert set(dependencyAnalyzer1.entity_map.keys()) == set(dependencyAnalyzer2.entity_map.keys())
-
+   
+    pp(dependencyAnalyzer1.dependencies)
     pp(dependencyAnalyzer1.entity_map.keys())
-    # pp(dependencyAnalyzer.dependencies)
 
     # print(dependencyAnalyzer.resolve_global_name("auth.authenticate", result1) )
     # print(dependencyAnalyzer.resolve_global_name("a.authenticate", result1) )
