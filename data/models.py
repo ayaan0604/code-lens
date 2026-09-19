@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, JSON
 from sqlalchemy.orm import declarative_base, relationship
 
 Base = declarative_base()
@@ -7,8 +7,15 @@ class AnalyzedFileRecord(Base):
     __tablename__ = 'files'
 
     id = Column(Integer, primary_key=True)
+    path = Column(String, nullable=False)
+    language = Column(String, nullable=False)
+    total_lines = Column(Integer)
+    code_lines = Column(Integer)
 
+    imports = relationship("ImportRecord", back_populates='file')
+    classes = relationship("ClassRecord", back_populates='file')
     functions = relationship("FunctionRecord", back_populates='file')
+    calls = relationship("CallRecord", back_populates='file')
 
 
 class FunctionRecord(Base):
@@ -23,10 +30,14 @@ class FunctionRecord(Base):
     source = Column(String)
     return_annotation = Column(String)
     parent_class = Column(String)
-    file_id = Column(Integer, ForeignKey('files.id'))
 
-    parameters = relationship("ParameterRecord", back_populates='function')
+    parameters = relationship("ParameterRecord", back_populates='function', cascade='all, delete-orphan')
+
+    file_id = Column(Integer, ForeignKey('files.id'))
     file = relationship("AnalyzedFileRecord", back_populates='functions')
+
+    class_id = Column(Integer, ForeignKey('classes.id'))
+    containing_class = relationship('ClassRecord', back_populates='methods')
 
 class ParameterRecord(Base):
     __tablename__ = 'parameters'
@@ -37,9 +48,51 @@ class ParameterRecord(Base):
     annotation = Column(String)
 
     function_id = Column(Integer, ForeignKey('functions.id'))
-
     function = relationship("FunctionRecord", back_populates='parameters')
 
+class ImportRecord(Base):
+
+    __tablename__ = 'imports'
+
+    id = Column(Integer, primary_key=True)
+    module = Column(String, nullable=False)
+    imported_name = Column(String)
+    alias = Column(String)
+    line_number = Column(Integer)
+    from_import = Column(Boolean, default=False)
+
+    file_id = Column(Integer, ForeignKey('files.id'))
+    file = relationship("AnalyzedFileRecord", back_populates='imports')
+
+    
+    
+    
+class ClassRecord(Base):
+    __tablename__ = 'classes'
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False)
+    qualified_name = Column(String, nullable=False)
+    global_name = Column(String, nullable=False)
+    line_no = Column(Integer)
+    bases = Column(JSON, default=list)
+
+
+    methods = relationship("FunctionRecord", back_populates='containing_class', cascade="all, delete-orphan")
+
+    file_id = Column(Integer, ForeignKey('files.id'))
+    file = relationship("AnalyzedFileRecord", back_populates='classes')
+
+class CallRecord(Base):
+
+    __tablename__ = "calls"
+    id = Column(Integer, primary_key=True)
+    qualified_name = Column(String, nullable=False)
+    line_number = Column(Integer)
+    containing_function = Column(String)
+
+    file_id = Column(Integer, ForeignKey('files.id'))
+    file = relationship("AnalyzedFileRecord", back_populates='calls')
 
 
 def main():

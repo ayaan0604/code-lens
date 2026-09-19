@@ -45,3 +45,58 @@ def function_record_to_info(record: FunctionRecord):
 
     return info
 
+
+
+def metadata_to_record():
+    pass
+
+
+def record_to_metadata():
+    pass
+
+
+
+def parameter_info_to_record():
+    pass
+
+
+def parameter_record_to_info():
+    pass
+
+
+
+def import_info_to_record():
+    pass
+
+
+def import_record_to_info():
+    pass
+
+
+
+
+def class_info_to_record():
+    pass
+
+
+def class_record_to_info():
+    pass
+
+
+
+def call_info_to_record():
+    pass
+
+
+def call_record_to_info():
+    pass
+
+
+
+def analyzed_file_to_record():
+    pass
+
+
+def analyzed_file_record_to_analyzed_file():
+    pass
+
