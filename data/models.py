@@ -12,10 +12,10 @@ class AnalyzedFileRecord(Base):
     total_lines = Column(Integer)
     code_lines = Column(Integer)
 
-    imports = relationship("ImportRecord", back_populates='file')
-    classes = relationship("ClassRecord", back_populates='file')
-    functions = relationship("FunctionRecord", back_populates='file')
-    calls = relationship("CallRecord", back_populates='file')
+    imports = relationship("ImportRecord", back_populates='file', cascade="all, delete-orphan")
+    classes = relationship("ClassRecord", back_populates='file', cascade="all, delete-orphan")
+    functions = relationship("FunctionRecord", back_populates='file', cascade="all, delete-orphan")
+    calls = relationship("CallRecord", back_populates='file', cascade="all, delete-orphan")
 
 
 class FunctionRecord(Base):
