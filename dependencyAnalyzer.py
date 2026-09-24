@@ -64,7 +64,24 @@ class DependencyAnalyzer():
 
         #print("couldn't find ", local_name)
         return None
-        
+
+    #function to get the {qualified name : global_name} dict for a file
+    #currently adds only functions and classes as per requirement
+
+    def get_file_global_names(self, file: AnalyzedFile):
+        file_name = self.get_qualified_file_name(
+            file.metadata.path
+        )
+
+        map = {}
+
+        for function in file.functions:
+            map[function.qualified_name] = f"{file_name}.{function.qualified_name}"
+
+        for cls in file.classes:
+            map[cls.qualified_name] = f"{file_name}.{cls.qualified_name}"
+
+        return map
 
     def add_dependency(self, source, target, type, line):
         self.dependencies.append(

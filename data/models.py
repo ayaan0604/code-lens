@@ -94,6 +94,26 @@ class CallRecord(Base):
     file_id = Column(Integer, ForeignKey('files.id'))
     file = relationship("AnalyzedFileRecord", back_populates='calls')
 
+#class to store the dependencies
+class DependencyRecord(Base):
+    __tablename__ = "dependencies"
+
+    id = Column(Integer, primary_key=True)
+    source_global_name = Column(String, nullable=False)
+    target_global_name = Column(String, nullable=False)
+    type = Column(String, nullable=False)
+    line_no = Column(Integer)
+
+#class to store the references of each entity against its global name
+class EntityIndexRecord(Base):
+    __tablename__ = "entity_index"
+
+    id = Column(Integer, primary_key=True)
+    global_name = Column(String, unique = True, nullable=False)
+    entity_type = Column(String, nullable=False)
+    entity_id = Column(Integer, nullable=False)
+
+
 
 def main():
     from sqlalchemy import create_engine

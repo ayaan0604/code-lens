@@ -1,10 +1,11 @@
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import DeclarativeBase, sessionmaker, selectinload
-from .models import AnalyzedFileRecord, FunctionRecord, ClassRecord
+from .models import AnalyzedFileRecord, FunctionRecord, ClassRecord, EntityIndexRecord, Base
 from typing import List
 
+DEFAULT_DB_PATH = "sqlite:///db.db"
 class Database :
-    def __init__(self, db_path: str, base: DeclarativeBase):
+    def __init__(self, db_path: str = DEFAULT_DB_PATH , base: DeclarativeBase = Base):
         self.db_path = db_path
         self.base = base
 
@@ -26,9 +27,36 @@ class Database :
             selectinload(AnalyzedFileRecord.calls)
         ]
 
+
+    def _create_entity_index(self, file_records):
+        index_records = []
+
+        for record in file_records:
+            for function in record.functions:
+
+                index_records.append(EntityIndexRecord(
+                    global_name = function.global_name,
+                    entity_id = function.id,
+                    entity_type = "Function"
+                ))
+
+            for cls in record.classes:
+                index_records.append(EntityIndexRecord(
+                    global_name = cls.global_name,
+                    entity_id = cls.id,
+                    entity_type = "Class"
+                ))
+
+        return index_records
+
     def save_analyzed_file_record(self, record: AnalyzedFileRecord):
         with self.Session() as session:
             session.add(record)
+            session.flush()
+
+            entity_index_records = self._create_entity_index([record])
+            session.add_all(entity_index_records)
+
             session.commit()
 
     def save_many_analyzed_file_records(self, records: List[AnalyzedFileRecord]):
@@ -36,8 +64,17 @@ class Database :
             return
         
         with self.Session() as session:
+            #add all record and flush them to generate ids
             session.add_all(records)
+            session.flush()
+
+            #create indexes for all entities and save them
+            entity_index_records = self._create_entity_index(records)
+
+            session.add_all(entity_index_records)
             session.commit()
+            
+
 
 
     def get_analyzed_file_record(self, id):

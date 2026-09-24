@@ -247,3 +247,6 @@ def analyzed_file_record_to_analyzed_file(record: AnalyzedFileRecord):
     )
 
     return analyzed_file
+
+def dependency_to_record(dependency: Dependency, global_names: dict):
+    pass
