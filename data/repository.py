@@ -1,7 +1,13 @@
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import DeclarativeBase, sessionmaker, selectinload
-from .models import AnalyzedFileRecord, FunctionRecord, ClassRecord, EntityIndexRecord, Base
+from .models import AnalyzedFileRecord, FunctionRecord, ClassRecord, EntityIndexRecord, Base, DependencyRecord
+from models import *
 from typing import List
+from .mappers import (
+    class_record_to_info,
+    function_record_to_info,
+    dependency_record_to_dependency
+)
 
 DEFAULT_DB_PATH = "sqlite:///db.db"
 class Database :
@@ -148,3 +154,53 @@ class Database :
             session.commit()
 
             return True
+
+
+    def get_entity(self, global_name:str):
+        with self.Session() as session:
+
+            index_record = session.execute(
+                select(EntityIndexRecord)
+                .where(EntityIndexRecord.global_name == global_name)
+            ).scalar_one_or_none()
+
+            if index_record is None:
+                return None
+
+            type_map = {
+                "Class": ClassRecord,
+                "Function": FunctionRecord
+            }
+
+            mapper_map = {
+                "Class": class_record_to_info,
+                "Function": function_record_to_info
+            }
+
+            record_type = type_map.get(index_record.entity_type)
+
+            if record_type is None:
+                return None
+
+            entity_record = session.get(
+                record_type,
+                index_record.entity_id
+            )
+
+            if entity_record is None:
+                return None
+
+            return mapper_map[index_record.entity_type](entity_record)
+
+    def get_dependency(self, id: int):
+        with self.Session() as session:
+
+            record = session.get(DependencyRecord, id)
+
+            if record is None:
+                return None
+
+            return dependency_record_to_dependency(
+                record,
+                self.get_entity
+            )

@@ -279,3 +279,32 @@ def dependency_to_record(dependency: Dependency, global_names: dict):
         type = dependency.type.value,
         line_no = dependency.line
     )
+
+def _external_dependency_from_name(name: str) -> ExternalDependency:
+    parts = name.split(".", 1)
+
+    if len(parts) == 1:
+        return ExternalDependency(module=parts[0])
+
+    return ExternalDependency(
+        module=parts[0],
+        name=parts[1]
+    )
+
+
+def dependency_record_to_dependency(record: DependencyRecord, resolver) -> Dependency:
+    source = resolver(record.source_name)
+    target = resolver(record.target_name)
+
+    if source is None:
+        source = _external_dependency_from_name(record.source_name)
+
+    if target is None:
+        target = _external_dependency_from_name(record.target_name)
+
+    return Dependency(
+        source=source,
+        target=target,
+        type=DependencyType(record.type),
+        line=record.line_no
+    )
