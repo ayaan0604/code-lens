@@ -9,6 +9,7 @@ class DependencyAnalyzer():
         self.analyzedFiles = analyzedFiles
         self.entity_map = {}
         self.dependencies : List[Dependency] = []
+        self.external_dependencies : List[ExternalDependency] = []
 
     def get_qualified_file_name(self, filePath: str)-> str:
         path = Path(filePath)
@@ -83,6 +84,24 @@ class DependencyAnalyzer():
 
         return map
 
+    #function to get{entity: global name} dict
+    #since entity objcts are non hashable, we use id(entity)
+
+    def get_entity_endpoint_names(self):
+        names = {}
+
+        for global_name, entity in self.entity_map.items():
+            if isinstance(entity, (ClassInfo, FunctionInfo)):
+                names[id(entity)] = global_name
+        
+        for file in self.analyzedFiles:
+            names[id(file.metadata)] = self.get_qualified_file_name(file.metadata.path)
+
+        return names
+
+
+
+
     def add_dependency(self, source, target, type, line):
         self.dependencies.append(
             Dependency(
@@ -103,6 +122,7 @@ class DependencyAnalyzer():
                         name = name
                     )
         self.entity_map[name] = extdep
+        self.external_dependencies.append(extdep)
 
         return extdep
 

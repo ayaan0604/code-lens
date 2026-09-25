@@ -74,8 +74,15 @@ class Database :
             session.add_all(entity_index_records)
             session.commit()
             
+    def save_external_dependencies(self, externals_dependencies):
+        with self.Session() as session:
+            session.add_all(externals_dependencies)
+            session.commit()
 
-
+    def save_dependencies(self, dependencies):
+        with self.Session() as session:
+            session.add_all(dependencies)
+            session.commit()
 
     def get_analyzed_file_record(self, id):
         with self.Session() as session:

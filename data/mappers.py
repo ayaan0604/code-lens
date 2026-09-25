@@ -248,5 +248,34 @@ def analyzed_file_record_to_analyzed_file(record: AnalyzedFileRecord):
 
     return analyzed_file
 
+def external_dependency_to_record(dep: ExternalDependency):
+    return ExternalDependencyRecord(
+        module = dep.module,
+        name = dep.name
+    )
+
+def external_dependency_record_to_external_dependency(record: ExternalDependencyRecord):
+    return ExternalDependency(
+        module = record.module,
+        name= record.module
+    )
+
 def dependency_to_record(dependency: Dependency, global_names: dict):
-    pass
+    '''global names contains { id(entity) : global_name }'''
+
+    #helper to resolve dependency name
+    def get_dependency_endpoint_name(entity):
+        if isinstance(entity, ExternalDependency):
+            if entity.name:
+                return f"{entity.module}.{entity.name}"
+
+            return entity.module
+
+        return global_names[id(entity)]
+
+    return DependencyRecord(
+        source_name = get_dependency_endpoint_name(dependency.source),
+        target_name = get_dependency_endpoint_name(dependency.target),
+        type = dependency.type.value,
+        line_no = dependency.line
+    )

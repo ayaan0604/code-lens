@@ -94,13 +94,19 @@ class CallRecord(Base):
     file_id = Column(Integer, ForeignKey('files.id'))
     file = relationship("AnalyzedFileRecord", back_populates='calls')
 
+class ExternalDependencyRecord(Base):
+    __tablename__ = "external_dependency"
+    id = Column(Integer, primary_key=True)
+    module = Column(String)
+    name = Column(String)
+
 #class to store the dependencies
 class DependencyRecord(Base):
     __tablename__ = "dependencies"
 
     id = Column(Integer, primary_key=True)
-    source_global_name = Column(String, nullable=False)
-    target_global_name = Column(String, nullable=False)
+    source_name = Column(String, nullable=False)
+    target_name = Column(String, nullable=False)
     type = Column(String, nullable=False)
     line_no = Column(Integer)
 

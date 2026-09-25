@@ -1,19 +1,19 @@
+
 from astAnalyzer import PythonASTAnalyzer
 from dependencyAnalyzer import DependencyAnalyzer
-from data.mappers import analyzed_file_to_record
+from data.mappers import analyzed_file_to_record, dependency_to_record, external_dependency_to_record
 from data.repository import Database
 
-file1 = "astAnalyzer.py"
-file2 = "dependencyAnalyzer.py"
-with open(file1) as f:
-    source1 = f.read()
-with open(file2) as f:
-    source2 = f.read()
 
-ast1  = PythonASTAnalyzer(source1, file1)
-ast2  = PythonASTAnalyzer(source2, file2)
+files = ["astAnalyzer.py","dependencyAnalyzer.py", "models.py"]
 
-analyzed_files = [ast1.analyze(), ast2.analyze()]
+analyzed_files = []
+
+for file in files:
+    with open(file) as f:
+        source = f.read()
+    analyzed_files.append(PythonASTAnalyzer(source, file).analyze())
+
 
 dpna = DependencyAnalyzer(analyzed_files)
 dpna.analyze()
@@ -30,5 +30,17 @@ db.base.metadata.drop_all(bind = db.engine)
 db.base.metadata.create_all(bind = db.engine)
 
 db.save_many_analyzed_file_records(records)
-print("success")
+print("successfully saved analyzed files")
+
+external_dependency_records = [external_dependency_to_record(dep) for dep in dpna.external_dependencies]
+db.save_external_dependencies(external_dependency_records)
+print("external dependencies saved successfully")
+
+
+global_names = dpna.get_entity_endpoint_names()
+
+dependency_records = [dependency_to_record(dep, global_names) for dep in dpna.dependencies]
+db.save_dependencies(dependency_records)
+print("successfully saved dependency records")
+
 
